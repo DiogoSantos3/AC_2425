@@ -40,10 +40,13 @@ rand:
     bl umull32
     ; add (retorno de umull32) + 2531011
     ; 2531011 = 0x269EC3
+    mov r4, 0xc3    
+    movt r4, 0x9e
+    add r0, r0, r4
+    mov r4, 0x26
+    movt r4, 0x00
 
     
-
-
     ldr r2, seed_addr
     ; seed = ... % RAND_MAX
     str r0, [r2, #0]
