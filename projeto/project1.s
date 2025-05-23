@@ -9,8 +9,8 @@ addr_stack_top:
 
 
 main:
-
-
+    b read_sides
+    b       .
 
 rand_seed_addr:
     .word rand_seed
@@ -27,14 +27,14 @@ read_sides:
 
     ;Isola os bits 2 e 3
     mov r1, #0x0C     ; coloca 0x0C em r1
-    and r0, r1        ; r0 = r0 & r1 (ou seja, & 0x0C)
+    and r0, r0, r1        ; r0 = r0 & r1 (ou seja, & 0x0C)
 
 
     ;faz shift para a direita para obter o valor entre 0 e 3
     lsr r0, r0, #2 ; r0 = r0 >> 2
 
     ;retorna em r0 (0 = 4 lados, 1 = 6 lados, 2 = 8 lados, 3 = 12lados)
-    bx lr
+    mov pc, lr
 
 ; =============================================================================
 ; Dados e variáveis globais

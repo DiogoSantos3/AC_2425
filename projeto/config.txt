@@ -1,12 +1,12 @@
 RAM
-id=4
-addrbits=11
+id=3
+addrbits=14
 databus=P16Low
 addrsel=0,7FFF
 
 RAM
-id=5
-addrbits=11
+id=4
+addrbits=14
 databus=P16High
 addrsel=0,7FFF
 
@@ -16,6 +16,6 @@ databus=P16Low
 addrsel=FF80,FFBF
 
 OUTPUTPORT
-id=6
+id=2
 databus=P16Low
 addrsel=FFC0,FFFF
