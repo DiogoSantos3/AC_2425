@@ -1,9 +1,9 @@
 .text
 .global _start
 
-b_start
+.b_start
 
-ldr pc, isr_addr
+
 
 .text
 rand_seed_addr:
@@ -72,14 +72,16 @@ read_sides:
     ; lê o bit do DIP-switch
     ldrb r0, [r1]  ; r0= valor lido
 
+
     ;Isola os bits 2 e 3
-    and r0, r0, #0x0C ; r0 = r0 & 0x0C
+    mov r1, #0x0C     ; coloca 0x0C em r1
+    and r0, r0, r1      ; r0 = r0 & 0x0C
 
     ;faz shift para a direita para obter o valor entre 0 e 3
     lsr r0, r0, #2 ; r0 = r0 >> 2
 
     ;retorna em r0 (0 = 4 lados, 1 = 6 lados, 2 = 8 lados, 3 = 12lados)
-    bx lr
+   movs pc, lr
 
 ; void show_number(uint8_t n)
 show_number:
@@ -91,7 +93,7 @@ show_number:
     movt r1, #0xFF
     strb r2, [r1]       ; escreve só o byte menos significativo
 
-    bx lr
+    movs pc, lr
 
 ; uint8_t generate_random(uint8_t sides)
 generate_random:
@@ -118,7 +120,7 @@ modulo_done:
     pop r3
     pop r2
     pop r1
-    bx lr
+    movs pc, lr
 
 
 ; =============================================================================
