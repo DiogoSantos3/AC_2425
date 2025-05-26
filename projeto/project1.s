@@ -9,7 +9,7 @@ addr_stack_top:
 
 ;======== Constantes ========
 	.equ	INPORT_ADDRESS,  0xFF80
-	.equ	OUTPORT_ADDRESS, 0xFFC0
+	.equ	OUTPORT_ADDRESS, 0xFFC0 ; Endereço do porto de saída (ns se esta certo)
 	.equ 	BCD_MSK,         0xF
 	.equ 	BCD_POS,         0
 
