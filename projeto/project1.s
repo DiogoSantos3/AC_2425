@@ -9,7 +9,7 @@ addr_stack_top:
 
 ;======== Constantes ========
 	.equ	INPORT_ADDRESS,  0xFF80
-	.equ	OUTPORT_ADDRESS, 0xC0FF
+	.equ	OUTPORT_ADDRESS, 0xFFC0
 	.equ 	BCD_MSK,         0xF
 	.equ 	BCD_POS,         0
 
@@ -64,7 +64,7 @@ void outport_write ( uint8_t value );
 */
 outport_write:
 	ldr		r1, outport_addr
-	strb	r0, [r1, #1]
+	strb	r0, [r1]
 	; save value to image port
 	ldr		r1, outport_img_addr
 	strb	r0, [r1]
@@ -130,4 +130,3 @@ rand_seed:     .word 1
 rand_seed_addr:
     .word rand_seed
 stack_top:  
-
