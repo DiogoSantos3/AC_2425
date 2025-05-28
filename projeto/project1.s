@@ -16,30 +16,58 @@ addr_stack_top:
 
 
 ;======== Código principal ========
+
 main:
-	bl seg7_init       	; Inicializa o display de 7 segmentos com valor constante (depois tem que ser random)
+	bl read_sides 		 ; r0 = número de lados do dado (0-3)
+	bl select_roll       ; r0 = número de lados do dado (6, 8 ou 12)
     ;bl _Inport_Read     ; r0 = valor do INPORT
     ;bl bcd_get          ; r0 = valor BCD (0-9 extraído) bits 0-3
     ;bl 	seg7_display
     b main
 
-bcd_get:
-	mov 	r1, #BCD_MSK & 0xF
-	movt	r1, #BCD_MSK >> 8
-	and 	r0, r0, r1
-	lsr 	r0, r0, #BCD_POS
-	mov		pc, lr
 
 
-seg7_init:
-	push	lr
-	ldrb r0, [r1, #0]
-	mov 	r1, #9
-	cmp		r1, r0
-	blo		seg7_display_ret
-	ldr		r1, seg7_values_addr
-	ldrb	r0, [r1, r0]
-	bl		outport_write
+;======== Funções ========
+
+select_roll:
+  	mov     r1, r0             ; guarda o valor de SIDES em r1
+	 
+	; switch SIDES
+    mov r2, #1              ; coloca o valor 6 num registo temporário
+    cmp r1, r2              ; compara registos r1 e r2
+    beq     set_max_6
+    mov r2, #2
+    cmp r1, r2
+    beq     set_max_8
+    mov r2, #3
+    cmp r1, r2
+    beq     set_max_9
+    b set_max_4             ; se não for nenhum dos anteriores, assume 4 lados
+
+
+set_max_4:              ;n faces = 4
+    mov r2, #4
+    b generate
+
+set_max_6:              ;n faces = 6
+    mov     r2, #6
+    b       generate
+
+set_max_8:              ;n faces = 8
+    mov     r2, #8
+    b       generate
+
+set_max_9:              ;n faces = 12
+    mov     r2, #9             
+    b       generate
+
+
+generate:
+   ; bl      generate_random    ; r0 ← valor entre 1 e r2
+   ; bl      seg7_display       ; mostra no display
+    b       main               ; loop infinito
+
+
 
 seg7_display:
 	push	lr
@@ -105,11 +133,12 @@ outport_img_addr:
 
 ; uint8_t read_sides()
 read_sides:
+   push lr
     
     bl _Inport_Read ; Lê o valor do inport
 
     ;Isola os bits 2 e 3
-    mov r1, #0x0C     ; coloca 0x0C em r1
+    mov r1, #0x0C     	; coloca 0x0C em r1
     and r0, r0, r1        ; r0 = r0 & r1 (ou seja, & 0x0C)
 
 
@@ -117,7 +146,7 @@ read_sides:
     lsr r0, r0, #2 ; r0 = r0 >> 2
 
     ;retorna em r0 (0 = 4 lados, 1 = 6 lados, 2 = 8 lados, 3 = 12lados)
-    mov pc, lr
+    pop pc
 
 
 _Inport_Read:
@@ -126,7 +155,12 @@ _Inport_Read:
     ldrb r0, [ r1, #0]
     mov pc, lr
 
-
+bcd_get:
+	mov 	r1, #BCD_MSK & 0xF
+	movt	r1, #BCD_MSK >> 8
+	and 	r0, r0, r1
+	lsr 	r0, r0, #BCD_POS
+	mov		pc, lr
 
 .data
 
