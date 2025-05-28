@@ -17,9 +17,10 @@ addr_stack_top:
 
 ;======== Código principal ========
 main:
-    bl _Inport_Read     ; r0 = valor do INPORT
-    bl bcd_get          ; r0 = valor BCD (0-9 extraído) bits 0-3
-    bl 	seg7_display
+	bl seg7_init       	; Inicializa o display de 7 segmentos com valor constante (depois tem que ser random)
+    ;bl _Inport_Read     ; r0 = valor do INPORT
+    ;bl bcd_get          ; r0 = valor BCD (0-9 extraído) bits 0-3
+    ;bl 	seg7_display
     b main
 
 bcd_get:
@@ -28,6 +29,17 @@ bcd_get:
 	and 	r0, r0, r1
 	lsr 	r0, r0, #BCD_POS
 	mov		pc, lr
+
+
+seg7_init:
+	push	lr
+	ldrb r0, [r1, #0]
+	mov 	r1, #9
+	cmp		r1, r0
+	blo		seg7_display_ret
+	ldr		r1, seg7_values_addr
+	ldrb	r0, [r1, r0]
+	bl		outport_write
 
 seg7_display:
 	push	lr
