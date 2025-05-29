@@ -84,7 +84,7 @@ seg7_values_addr:
 	.word	seg7_values
 seg7_values:
 //           dpgfedcba
-	.byte	0b00111111 // 0
+	;.byte	0b00111111 // 0
     .byte 	0b00000110 // 1
 	.byte 	0b01011011 // 2
 	.byte 	0b01001111 // 3
@@ -161,6 +161,36 @@ bcd_get:
 	and 	r0, r0, r1
 	lsr 	r0, r0, #BCD_POS
 	mov		pc, lr
+
+_check_roll_flag:
+	push	lr
+	
+	bl _Inport_Read
+
+	mov r1, #0x01
+	and r0, r0, r1 ; Isola o bit 0 do inport
+
+	;ldr r2, roll_flag  ;o chat deu me assim mas achei estranho
+	;ldrb r3, [r2]
+
+	ldrb  r2, [roll_flag] ;lê o valor do flag roll
+
+	mov r1, #1
+	cmp r2, r1
+	bne _no_roll_flag 
+	mov r1, #0
+	cmp r0, r1
+	bne _no_roll_flag
+
+	bl ;aqui onde fazemos o laçamento do dado porque houve transição descendente, ou entao vai se para a main que chama o generate
+
+
+_no_roll_flag:
+
+	strb    r0, [r2] ;guarda o valor atual como novo valor anterior
+    pop     pc
+
+
 
 .data
 
