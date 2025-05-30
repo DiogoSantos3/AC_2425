@@ -3,7 +3,7 @@
 	b 		.	   
 program:
 	ldr		sp, addr_stack_top
-	b 		main
+	b 		main_init
 addr_stack_top:
 	.word 	stack_top
 
@@ -17,9 +17,13 @@ addr_stack_top:
 
 ;======== Código principal ========
 
+main_init:
+	bl sides_init
+	
 main:
+	bl _check_roll_flag
 	bl read_sides 		 ; r0 = número de lados do dado (0-3)
-	bl select_roll       ; r0 = número de lados do dado (6, 8 ou 12)
+	;bl select_roll       ; r0 = número de lados do dado (6, 8 ou 12)
     ;bl _Inport_Read     ; r0 = valor do INPORT
     ;bl bcd_get          ; r0 = valor BCD (0-9 extraído) bits 0-3
     ;bl 	seg7_display
@@ -28,6 +32,15 @@ main:
 
 
 ;======== Funções ========
+
+
+sides_init:
+    push lr
+    mov r0,  #0x3F         ; índice do número 0 no vetor seg7_values
+
+    bl outport_write
+    pop pc
+
 
 select_roll:
   	mov     r1, r0             ; guarda o valor de SIDES em r1
@@ -165,6 +178,7 @@ bcd_get:
 _check_roll_flag:
 	push	lr
 	
+_check_roll_flag_loop:
 	bl _Inport_Read
 
 	mov r1, #0x01
@@ -173,22 +187,19 @@ _check_roll_flag:
 	;ldr r2, roll_flag  ;o chat deu me assim mas achei estranho
 	;ldrb r3, [r2]
 
-	ldrb  r2, [roll_flag] ;lê o valor do flag roll
+	ldr   r3, roll_flag  ; carrega o endereço de roll_flag para r3
+    ldrb  r2, [r3]        ; lê o byte guardado nesse endereço para r2
+	strb    r0, [r3] 		;guarda o valor atual como novo valor anterior
+
 
 	mov r1, #1
 	cmp r2, r1
-	bne _no_roll_flag 
-	mov r1, #0
-	cmp r0, r1
-	bne _no_roll_flag
+	bne _check_roll_flag_loop 
+	and r0, r0, r0
+	bne _check_roll_flag_loop
+	pop pc
 
-	bl ;aqui onde fazemos o laçamento do dado porque houve transição descendente, ou entao vai se para a main que chama o generate
-
-
-_no_roll_flag:
-
-	strb    r0, [r2] ;guarda o valor atual como novo valor anterior
-    pop     pc
+	;bl ;aqui onde fazemos o laçamento do dado porque houve transição descendente, ou entao vai se para a main que chama o generate
 
 
 
@@ -205,4 +216,5 @@ rand_seed:     .word 1
     .align 1
 rand_seed_addr:
     .word rand_seed
-stack_top:  
+stack_top: 
+
