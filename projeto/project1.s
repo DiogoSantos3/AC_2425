@@ -1,6 +1,10 @@
 .text
-	b		program
-	b 		.	   
+    b program           ; endereço 0 (reset vector)
+    b isr   ; endereço 2 (interrupt vector)
+
+isr_addr:
+    .word isr
+
 program:
 	ldr		sp, addr_stack_top
 	b 		main_init
@@ -12,6 +16,8 @@ addr_stack_top:
 	.equ	OUTPORT_ADDRESS, 0xFFC0 ; Endereço do porto de saída (ns se esta certo)
 	.equ 	BCD_MSK,         0xF
 	.equ 	BCD_POS,         0
+	.equ	VAR_INIT_VAL, 0 ; Valor inicial de var
+	.equ	FED_ADDRESS, 0xFF40 
 
 
 
@@ -21,6 +27,11 @@ main_init:
 	bl sides_init
 	
 main:
+	mov	r0, #VAR_INIT_VAL
+	ldr	r1, var_addr_main
+	strb	r0, [r1, #0]             ; inicializa contador/variável
+
+	
 	bl _check_roll_flag
 	bl read_sides 		 ; r0 = número de lados do dado (0-3)
 	;bl select_roll       ; r0 = número de lados do dado (6, 8 ou 12)
@@ -42,7 +53,7 @@ sides_init:
     pop pc
 
 
-select_roll:
+select_Dice:
   	mov     r1, r0             ; guarda o valor de SIDES em r1
 	 
 	; switch SIDES
@@ -60,19 +71,19 @@ select_roll:
 
 set_max_4:              ;n faces = 4
     mov r2, #4
-    b generate
+    b launch_dice
 
 set_max_6:              ;n faces = 6
     mov     r2, #6
-    b       generate
+    b       launch_dice
 
 set_max_8:              ;n faces = 8
     mov     r2, #8
-    b       generate
+    b       launch_dice
 
 set_max_9:              ;n faces = 12
     mov     r2, #9             
-    b       generate
+    b       launch_dice
 
 
 generate:
@@ -108,6 +119,46 @@ seg7_values:
 	.byte 	0b01111111 // 8
 	.byte	0b01101111 // 9
 	.align	1
+
+
+launch_dice:
+    push lr
+
+	bl read_sides
+	bl select_Dice ; r2 = número de lados do dado (6, 8 ou 12)
+
+	mov r4, #4
+
+roll_efect:
+	bl generate_random ; gera um número aleatório entre 1 e r2
+	bl seg7_display ; mostra o número no display
+
+wait_250:
+	ldr r0 var_addr_isr
+	ldrb r1, [r0]
+	mov r3, #25
+	cmp r1,r3
+	blo wait_250:
+	mov r2, #0
+	strb r2, [r0] ; reseta o contador
+
+	sub r4, r4, #1
+	bne roll_efect
+
+	bl generate_random ; gera o número final entre 1 e r2
+	bl seg7_display ; mostra o número final no display
+
+	wait_10s:
+    ldr r0, var_addr_isr
+    ldrb r1, [r0]
+    mov r3, #1000
+    cmp r1, r3
+    blo wait_10s
+    mov r2, #0
+    strb r2, [r0]
+
+    pop pc
+
 
 
 
@@ -201,9 +252,132 @@ _check_roll_flag_loop:
 
 	;bl ;aqui onde fazemos o laçamento do dado porque houve transição descendente, ou entao vai se para a main que chama o generate
 
+isr:
+	push	r1
+	push	r0
+	mov	r0, #FED_ADDRESS & 0xFF
+	movt	r0, #(FED_ADDRESS >> 8) & 0xFF
+	strb	r2, [r0, #0]
+	ldr	r0, var_addr_isr
+	ldrb	r1, [r0, #0]
+	add	r1, r1, #1
+	strb	r1, [r0, #0]
+	pop	r0
+	pop	r1
+	movs	pc, lr
+
+var_addr_isr:
+	.word	var
+
+	;sempre que precisamos da variavel var vemos o valor da mesma, depois e so fazer um loop onde se compara 
+
+	;usar 100 hz
+
+generate_random:
+    push lr
+gen_rand_try:
+    bl rand           ; r0 ∈ [0, 65535]
+    cmp r2, r0        ; testa se r0 > r2
+    bcc gen_rand_try  ; se for maior, tenta de novo
+    add r0, r0, #1    ; ajusta para intervalo [1, r2]
+    pop pc
+
+
+
+
+rand:
+	push	lr
+	ldr	r2, seed_addr_rand
+	ldr	r0, [r2, #0]
+	ldr	r1, [r2, #2]
+	mov	r2, #( 0x43FD >> 0 ) & 0xFF
+	movt	r2, #( 0x43FD >> 8 ) & 0xFF
+	mov	r3, #( 0x0003 >> 0 ) & 0xFF
+	movt	r3, #( 0x0003 >> 8 ) & 0xFF
+	bl	umull32
+	mov	r2, #( 0x9EC3 >> 0 ) & 0xFF
+	movt	r2, #( 0x9EC3 >> 8 ) & 0xFF
+	mov	r3, #( 0x0026 >> 0 ) & 0xFF
+	movt	r3, #( 0x0026 >> 8 ) & 0xFF
+	add	r0, r0, r2
+	adc	r1, r1, r3
+	mov	r2, #0xFF
+	movt	r2, #0xFF
+	cmp r0, r2
+	bne rand_save_seed
+	mov	r3, #0xFF
+	movt	r3, #0xFF
+	cmp r1, r3
+	bne rand_save_seed
+	mov r0, #0
+	mov r1, #0
+rand_save_seed:
+	ldr	r2, seed_addr_rand
+	str	r0, [r2, #0]
+	str	r1, [r2, #2]
+	mov	r0, r1
+	pop	pc
+
+
+umull32:
+	push	r8
+	push	r7
+	push	r6
+	push	r5
+	push	r4
+	asr	r4, r3, #15
+	mov	r5, r4
+	mov	r6, #0
+	mov	r7, #0
+umull32_loop:
+	mov	r8, #32
+	cmp	r7, r8
+	bhs	umull32_ret
+	mov	r8, #1
+	and	r8, r2, r8
+	bzc	umull32_else
+	mov	r8, #1
+	cmp	r6, r8
+	bne	umull32_loop_end
+	add	r4, r4, r0
+	adc	r5, r5, r1
+	b	umull32_loop_end
+umull32_else:
+	mov	r8, #0
+	cmp	r6, r8
+	bne	umull32_loop_end
+	sub	r4, r4, r0
+	sbc	r5, r5, r1
+umull32_loop_end:
+	mov	r8, #1
+	and	r6, r2, r8
+	asr	r5, r5, #1
+	rrx	r4, r4
+	rrx	r3, r3
+	rrx	r2, r2
+	add	r7, r7, #1
+	b	umull32_loop
+umull32_ret:
+	mov	r0, r2
+	mov	r1, r3
+	pop	r4
+	pop	r5
+	pop	r6
+	pop	r7
+	pop	r8
+	mov	pc, lr
 
 
 .data
+
+seed:
+	.word 1, 0
+
+seed_addr_rand:
+	.word seed
+
+var:
+	.space	1
 
 outport_img:
 	.space	1
@@ -212,9 +386,6 @@ outport_img:
 roll_flag:     .word 0
 
     .align 1
-rand_seed:     .word 1
-    .align 1
-rand_seed_addr:
-    .word rand_seed
+
 stack_top: 
 
